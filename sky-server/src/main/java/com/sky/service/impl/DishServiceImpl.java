@@ -76,10 +76,40 @@ public class DishServiceImpl implements DishService {
         if(setmealIds!=null&&!setmealIds.isEmpty()){
             throw new DeletionNotAllowedException(MessageConstant.DISH_BE_RELATED_BY_SETMEAL);
         }
-        ids.forEach(id->{
-            dishMapper.deleteById(id);
-            dishFlavorMapper.deleteByDishId(id);
-        });
-        
+//        ids.forEach(id->{
+//            dishMapper.deleteById(id);
+//            dishFlavorMapper.deleteByDishId(id);
+//        });
+        dishMapper.deleteByIds(ids);
+        dishFlavorMapper.deleteByDishIds(ids);
+    }
+
+    @Override
+    public DishVO getByIdWithFlavor(Long id) {
+        Dish dish=dishMapper.getById(id);
+
+
+        List<DishFlavor>  dishFlavorList=dishFlavorMapper.getByDishId(id);
+
+        DishVO dishVO=new DishVO();
+        BeanUtils.copyProperties(dish,dishVO);
+        dishVO.setFlavors(dishFlavorList);
+        return dishVO;
+    }
+
+    @Override
+    public void updateWithFlavor(DishDTO dishDTO) {
+        Dish dish=new Dish();
+        BeanUtils.copyProperties(dishDTO,dish);
+        dishMapper.update(dish);
+
+        dishFlavorMapper.deleteByDishId(dish.getId());
+        List<DishFlavor> dishFlavorList=dishDTO.getFlavors();
+        if(dishFlavorList != null && !dishFlavorList.isEmpty()){
+            dishFlavorList.forEach(flavor->{
+                flavor.setDishId(dish.getId());
+            });
+            dishFlavorMapper.insertBatch(dishFlavorList);
+        }
     }
 }
