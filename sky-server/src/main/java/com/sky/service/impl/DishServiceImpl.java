@@ -56,8 +56,9 @@ public class DishServiceImpl implements DishService {
     @Override
     public PageResult pageQuery(DishPageQueryDTO dishPageQueryDTO) {
         PageHelper.startPage(dishPageQueryDTO.getPage(),dishPageQueryDTO.getPageSize());
-        Page<DishVO> page = dishMapper.pageQuery(dishPageQueryDTO);
-        return new PageResult(page.getTotal(),page.getResult());
+        try (Page<DishVO> page = dishMapper.pageQuery(dishPageQueryDTO)) {
+            return new PageResult(page.getTotal(), page.getResult());
+        }
 
     }
 
@@ -111,5 +112,10 @@ public class DishServiceImpl implements DishService {
             });
             dishFlavorMapper.insertBatch(dishFlavorList);
         }
+    }
+
+    @Override
+    public DishVO[] getByCategoryId(Long categoryId) {
+        return dishMapper.getByCategoryId(categoryId);
     }
 }

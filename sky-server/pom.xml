@@ -11,6 +11,7 @@
     <artifactId>sky-server</artifactId>
     <dependencies>
 
+
         <dependency>
             <groupId>com.sky</groupId>
             <artifactId>sky-common</artifactId>
@@ -54,7 +55,9 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
+
 
         <dependency>
             <groupId>com.alibaba</groupId>
