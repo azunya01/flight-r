@@ -1,6 +1,7 @@
 package com.sky.dto;
 
 import lombok.Data;
+import org.springframework.context.annotation.Bean;
 
 import java.io.Serializable;
 
