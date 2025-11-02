@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.sky.mapper.UserMapper">
+    <insert id="insert" keyProperty="id" useGeneratedKeys="true" keyColumn="id">
+        INSERT INTO user(userName, name, password, phone, sex, idNumber)
+        VALUES (#{userName}, #{name}, #{password}, #{phone}, #{sex}, #{idNumber})
+
+    </insert>
+    <select id="getByPhone" resultType="com.sky.entity.User">
+        SELECT * FROM user WHERE phone = #{phone}
+    </select>
+
+
+</mapper>
