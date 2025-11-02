@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>航班查询 | Flight-R</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="page-header">
+    <h1>Flight-R 航班查询</h1>
+    <p>按出发 / 到达城市、航班号或时间区间查找航班，并查看舱位余票。</p>
+</header>
+
+<main class="page-content">
+    <section class="card">
+        <h2 class="card__title">查询条件</h2>
+        <form id="search-form" class="search-form">
+            <div class="form-row">
+                <label>
+                    出发城市
+                    <input type="text" name="departureCity" placeholder="如：北京" />
+                </label>
+                <label>
+                    到达城市
+                    <input type="text" name="arrivalCity" placeholder="如：上海" />
+                </label>
+                <label>
+                    航班号
+                    <input type="text" name="flightId" placeholder="如：MU5101" />
+                </label>
+            </div>
+
+            <div class="form-row">
+                <label>
+                    出发时间起
+                    <input type="datetime-local" name="departTimeFrom" />
+                </label>
+                <label>
+                    出发时间止
+                    <input type="datetime-local" name="departTimeTo" />
+                </label>
+                <label>
+                    到达时间起
+                    <input type="datetime-local" name="arrivalTimeFrom" />
+                </label>
+                <label>
+                    到达时间止
+                    <input type="datetime-local" name="arrivalTimeTo" />
+                </label>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn--primary">搜索航班</button>
+                <button type="reset" class="btn btn--ghost" id="reset-btn">重置</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <div class="card__title card__title--with-status">
+            <h2>查询结果</h2>
+            <span id="result-status" class="status-label">请先填写查询条件</span>
+        </div>
+        <div id="results" class="results"></div>
+    </section>
+</main>
+
+<footer class="page-footer">
+    <span>提示：时间需按“YYYY-MM-DD HH:MM:SS”传给后端，系统会自动完成格式转换。</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
