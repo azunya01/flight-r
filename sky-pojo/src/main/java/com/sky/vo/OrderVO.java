@@ -1,22 +1,25 @@
+// com.sky.vo.OrderVO
 package com.sky.vo;
 
-import com.sky.entity.OrderDetail;
-import com.sky.entity.Orders;
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class OrderVO extends Orders implements Serializable {
+public class OrderVO implements Serializable {
+    private Integer orderId;
+    private String  status;
+    private String  flightId;
+    private BigDecimal totalPrice;
 
-    //订单菜品信息
-    private String orderDishes;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createAt;    // 如果你仍然用数据库列 CreateAt/UpdateAt
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updateAt;
 
-    //订单详情
-    private List<OrderDetail> orderDetailList;
-
+    private List<PassengerVO> passengerVOList;
 }

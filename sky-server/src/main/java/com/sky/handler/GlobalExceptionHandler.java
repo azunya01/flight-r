@@ -27,20 +27,10 @@ public class GlobalExceptionHandler {
         log.error("异常信息：{}", ex.getMessage());
         return Result.error(ex.getMessage());
     }
-
-    @ExceptionHandler
-    public Result exceptionHandler(SQLIntegrityConstraintViolationException ex){
-        String massage = ex.getMessage();
-        if(massage.contains("Duplicate entry"))
-        {
-            String[] split=massage.split(" ");
-            String name=split[2];
-            String msg=name+"用户已存在";
-            return Result.error(msg);
-        }
-        else {
-            return Result.error(MessageConstant.UNKNOWN_ERROR);
-        }
+    @ExceptionHandler(Exception.class)
+    public <T> Result<T> handleOther(Exception ex) {
+        log.error("其他异常: ", ex); // 打印堆栈
+        return Result.error("服务器内部错误");
     }
 
 }

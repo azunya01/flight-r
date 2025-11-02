@@ -6,6 +6,11 @@ spring:
     active: dev
   main:
     allow-circular-references: true
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+        write-dates-as-timestamps: false
   datasource:
     druid:
       driver-class-name: ${sky.datasource.driver-class-name}
@@ -22,12 +27,13 @@ mybatis:
   #mapper配置文件
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.sky.entity
-  configuration:
-    #开启驼峰命名
-    map-underscore-to-camel-case: true
+
+
 
 logging:
   level:
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: TRACE
+    org.springframework.web.servlet.DispatcherServlet: DEBUG
     com:
       sky:
         mapper: debug

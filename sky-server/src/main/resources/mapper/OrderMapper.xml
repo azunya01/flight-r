@@ -1,60 +1,93 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.sky.mapper.OrderMapper">
 
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO orders(number, user_id, status, address_book_id, order_time, checkout_time, pay_method, pay_status,
-                           amount, remark, phone, address, consignee,estimated_delivery_time, delivery_status,
-                           pack_amount, tableware_number,tableware_status)
-        VALUES(#{number}, #{userId}, #{status}, #{addressBookId}, #{orderTime}, #{checkoutTime}, #{payMethod}, #{payStatus},
-               #{amount}, #{remark}, #{phone}, #{address}, #{consignee}, #{estimatedDeliveryTime}, #{deliveryStatus},
-               #{packAmount}, #{tablewareNumber}, #{tablewareStatus})
-    </insert>
-    <update id="update">
-        update orders set number = #{number},
-                          user_id = #{userId},
-                          status = #{status},
-                          address_book_id = #{addressBookId},
-                          order_time = #{orderTime},
-                          checkout_time = #{checkoutTime},
-                          pay_method = #{payMethod},
-                          pay_status = #{payStatus},
-                          amount = #{amount},
-                          remark = #{remark},
-                          phone = #{phone},
-                          address = #{address},
-                          consignee = #{consignee},
-                          estimated_delivery_time = #{estimatedDeliveryTime},
-                          delivery_status = #{deliveryStatus},
-                          pack_amount = #{packAmount},
-                          tableware_number = #{tablewareNumber},
-                          tableware_status = #{tablewareStatus}
-        where id = #{id}
-
-    </update>
-    <select id="pageQuery" resultType="Orders">
-        select * from orders
-        <where>
-            <if test="number != null and number!=''">
-                and number like concat('%',#{number},'%')
-            </if>
-            <if test="phone != null and phone!=''">
-                and phone like concat('%',#{phone},'%')
-            </if>
-            <if test="userId != null">
-                and user_id = #{userId}
-            </if>
-            <if test="status != null">
-                and status = #{status}
-            </if>
-            <if test="beginTime != null">
-                and order_time &gt;= #{beginTime}
-            </if>
-            <if test="endTime != null">
-                and order_time &lt;= #{endTime}
-            </if>
-        </where>
-        order by order_time desc
+    <!-- 基础查询 -->
+    <select id="selectUserIdByOrder" resultType="int">
+        SELECT UserID FROM `order` WHERE OrderID = #{orderId}
     </select>
+
+    <select id="selectFlightIdByOrder" resultType="string">
+        SELECT FlightID FROM `order` WHERE OrderID = #{orderId}
+    </select>
+
+    <select id="selectStatusByOrder" resultType="string">
+        SELECT Status FROM `order` WHERE OrderID = #{orderId}
+    </select>
+
+    <select id="selectOrderTotal" resultType="java.math.BigDecimal">
+        SELECT TotalPrice FROM `order` WHERE OrderID = #{orderId}
+    </select>
+
+    <!-- 支付：HOLD -> PAID -->
+    <update id="markPaid">
+        UPDATE `order`
+        SET Status = 'PAID',
+            PayAmount  = #{amount},
+            PayChannel = #{channel},
+            PaidAt     = NOW()
+        WHERE OrderID = #{orderId}
+          AND Status = 'HOLD'
+    </update>
+
+    <!-- 取消：HOLD/PAID -> CANCELED -->
+    <update id="markCanceled">
+        UPDATE `order`
+        SET Status = 'CANCELED',
+            CancelReason = #{reason}
+        WHERE OrderID = #{orderId}
+          AND Status IN ('HOLD','PAID')
+    </update>
+
+    <!-- 新建订单（返回自增ID 用 LAST_INSERT_ID 配合） -->
+    <insert id="insertOrderReturnId">
+        INSERT INTO `order`(FlightID, Status, UserID, CreateAt)
+        VALUES(#{flightId}, #{status}, #{userId}, NOW())
+    </insert>
+
+    <select id="lastInsertId" resultType="int">
+        SELECT LAST_INSERT_ID()
+    </select>
+
+    <!-- 复制乘客到新订单：触发器会自动扣减库存并计算价格 -->
+    <insert id="copyPassengersToNewOrder">
+        INSERT INTO passenger(UserID, OrderID, Name, IDNumber, Gender, phone, SeatTypeID)
+        SELECT UserID, #{newOrderId}, Name, IDNumber, Gender, phone, SeatTypeID
+        FROM passenger
+        WHERE OrderID = #{oldOrderId}
+    </insert>
+
+    <!-- 删除旧订单的乘客：触发器返还库存并联动总价 -->
+    <delete id="deletePassengersByOrder">
+        DELETE FROM passenger WHERE OrderID = #{orderId}
+    </delete>
+
+    <!-- 旧单标记为 REBOOKED，并记录新单ID -->
+    <update id="markRebooked">
+        UPDATE `order`
+        SET Status = 'REBOOKED',
+            RebookTo = #{newOrderId}
+        WHERE OrderID = #{oldOrderId}
+          AND Status IN ('HOLD','PAID')
+    </update>
+
+    <!-- 改签余票校验：以旧单的 SeatTypeID 统计人数，检查新航班 flight_seat.AvailableSeats 是否足够
+         注意：这里有 '<' 比较运算，必须用 CDATA 包住或写成 &lt; -->
+    <select id="countRebookShortage" resultType="int">
+        <![CDATA[
+        SELECT COUNT(1) FROM (
+                                 SELECT p.SeatTypeID, COUNT(*) AS cnt
+                                 FROM passenger p
+                                 WHERE p.OrderID = #{oldOrderId}
+                                 GROUP BY p.SeatTypeID
+                             ) t
+                                 LEFT JOIN flight_seat fs
+                                           ON fs.FlightID  = #{newFlightId}
+                                               AND fs.SeatTypeID = CAST(t.SeatTypeID AS CHAR(5))
+        WHERE fs.AvailableSeats IS NULL OR fs.AvailableSeats < t.cnt
+        ]]>
+    </select>
+
 </mapper>

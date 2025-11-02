@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sky.mapper.BookMapper">
+
+    <!-- 订单插入：回填自增主键 OrderId -->
+    <insert id="insertOrder"
+            parameterType="com.sky.entity.Order"
+            useGeneratedKeys="true"
+            keyProperty="orderId"
+            keyColumn="OrderId">
+        INSERT INTO `order` (FlightId, Status, UserId)
+        VALUES (#{flightId}, #{status}, #{userId})
+    </insert>
+
+    <!-- 航班查询 -->
+    <select id="selectFlightById" parameterType="string" resultType="com.sky.entity.Flight">
+        SELECT *
+        FROM flight
+        WHERE FlightId = #{flightId}
+    </select>
+
+    <!-- 同一手机号在同一航班是否已有订单 -->
+    <select id="checkPassengerExists" resultType="long">
+        SELECT COUNT(*)
+        FROM passenger p
+                 JOIN `order` o ON p.OrderId = o.OrderId
+        WHERE p.phone = #{phone}
+          AND o.FlightId = #{flightId}
+    </select>
+
+    <!-- 舱位余票（来自 flight_seat 汇总表） -->
+    <select id="getAvailableSeats" resultType="int">
+        SELECT AvailableSeats
+        FROM flight_seat
+        WHERE FlightId = #{flightId}
+          AND SeatTypeId = #{seatTypeId}
+    </select>
+
+    <!-- 取一个可售座位号（逐席表：inventory 的 SeatTypeId 为 CHAR(5)，这里做 CAST 兼容） -->
+    <select id="getSeatNo" resultType="string">
+        SELECT seatNo
+        FROM flight_seat_inventory
+        WHERE Status = 'AVAILABLE'
+          AND FlightId = #{flightId}
+          AND SeatTypeId = CAST(#{seatTypeId} AS CHAR(5))
+        LIMIT 1
+    </select>
+
+    <!-- 原子锁座：把该座位改为 BOOKED，并写入 orderId / userId -->
+    <update id="bookSeat">
+        UPDATE flight_seat_inventory
+        SET Status = 'BOOKED',
+            orderId = #{orderId},
+            passengerId = #{userId},
+            updatedAT = NOW()
+        WHERE FlightId = #{flightId}
+          AND SeatTypeId = CAST(#{seatTypeId} AS CHAR(5))
+          AND seatNo = #{seatNo}
+          AND Status = 'AVAILABLE'
+        LIMIT 1
+    </update>
+
+    <!-- 扣减舱位余票（若你有触发器可省略本步骤） -->
+    <update id="decrementAvailableSeats">
+        UPDATE flight_seat
+        SET AvailableSeats = GREATEST(AvailableSeats - 1, 0)
+        WHERE FlightId = #{flightId}
+          AND SeatTypeId = #{seatTypeId}
+          AND AvailableSeats > 0
+    </update>
+    <!-- 插入乘客：回填自增主键 PassengerId -->
+    <insert id="insertPassenger"
+            parameterType="com.sky.entity.Passenger"
+            useGeneratedKeys="true"
+            keyProperty="passengerId"
+            keyColumn="PassengerId">
+        INSERT INTO passenger (UserId, OrderId, Name, IdNumber, Gender, phone, SeatTypeId)
+        VALUES (#{userId}, #{orderId}, #{name}, #{idNumber}, #{gender}, #{phone}, #{seatTypeId})
+    </insert>
+
+    <select id="selectPassengerPrice" resultType="BigDecimal">
+        SELECT price FROM passenger WHERE PassengerId = #{passengerId}
+    </select>
+
+    <select id="selectOrderTotal" resultType="BigDecimal">
+        SELECT TotalPrice FROM `order` WHERE OrderId = #{orderId}
+    </select>
+
+    <!-- 兜底手动汇总（如果你暂时不加 AFTER INSERT 触发器，就用它） -->
+    <update id="recalcOrderTotal">
+        UPDATE `order` o
+        SET o.TotalPrice = (
+            SELECT ROUND(COALESCE(SUM(p.price),0), 2)
+            FROM passenger p
+            WHERE p.OrderId = o.OrderId
+        )
+        WHERE o.OrderId = #{orderId}
+    </update>
+
+</mapper>

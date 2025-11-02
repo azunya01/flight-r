@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sky.mapper.FlightQueryMapper">
+
+    <!-- 航班主信息查询 -->
+    <select id="searchFlights" resultType="com.sky.vo.FlightListItemVO">
+        SELECT
+        f.FlightID      AS flightId,
+        f.DepartureCity AS departureCity,
+        f.ArrivalCity   AS arrivalCity,
+        f.DepartureTime AS departureTime,
+        f.ArrivalTime   AS arrivalTime,
+        f.BasePrice     AS basePrice
+        FROM flight f
+        <where>
+            <if test="q.flightId != null and q.flightId != ''">
+                AND f.FlightID = #{q.flightId}
+            </if>
+            <if test="q.departureCity != null and q.departureCity != ''">
+                AND f.DepartureCity = #{q.departureCity}
+            </if>
+            <if test="q.arrivalCity != null and q.arrivalCity != ''">
+                AND f.ArrivalCity = #{q.arrivalCity}
+            </if>
+
+            <!-- 出发时间区间 -->
+            <if test="q.departTimeFrom != null">
+                AND f.DepartureTime &gt;= #{q.departTimeFrom}
+            </if>
+            <if test="q.departTimeTo != null">
+                AND f.DepartureTime &lt;= #{q.departTimeTo}
+            </if>
+
+            <!-- 到达时间区间 -->
+            <if test="q.arrivalTimeFrom != null">
+                AND f.ArrivalTime &gt;= #{q.arrivalTimeFrom}
+            </if>
+            <if test="q.arrivalTimeTo != null">
+                AND f.ArrivalTime &lt;= #{q.arrivalTimeTo}
+            </if>
+        </where>
+        ORDER BY f.DepartureTime ASC, f.FlightID ASC
+        LIMIT 200
+    </select>
+
+    <!-- 批量查舱位信息：价格=BasePrice*Multiplier（四舍五入到分） -->
+    <select id="listSeatsByFlightIds" resultType="com.sky.vo.SeatSummaryVO">
+    SELECT
+    fs.FlightID                           AS flightId,            <!-- 组装用 -->
+    CAST(fs.SeatTypeID AS SIGNED)         AS seatTypeId,
+    st.SeatTypeName                       AS seatTypeName,        <!-- 有表就保留 -->
+    ROUND(COALESCE(f.BasePrice,0) * COALESCE(fs.priceMultiplier,1), 2) AS price,
+    fs.AvailableSeats                     AS availableSeats
+    FROM flight_seat fs
+    JOIN flight f ON f.FlightID = fs.FlightID
+    LEFT JOIN seattype st
+    ON st.SeatTypeID = CAST(fs.SeatTypeID AS CHAR(5))          <!-- 没这张表就删掉 LEFT JOIN 与该列 -->
+    <where>
+        <choose>
+            <when test="flightIds != null and flightIds.size() > 0">
+                AND fs.FlightID IN
+                <foreach collection="flightIds" item="fid" open="(" separator="," close=")">
+                    #{fid}
+                </foreach>
+            </when>
+            <otherwise>
+                <if test="flightId != null and flightId != ''">
+                    AND fs.FlightID = #{flightId}
+                </if>
+            </otherwise>
+        </choose>
+    </where>
+    ORDER BY fs.FlightID, CAST(fs.SeatTypeID AS SIGNED)
+</select>
+
+
+</mapper>
